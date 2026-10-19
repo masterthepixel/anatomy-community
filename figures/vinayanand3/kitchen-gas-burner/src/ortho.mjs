@@ -104,8 +104,8 @@ export function buildOrtho(W, H) {
   const windows = [0, Math.PI / 2, Math.PI, -Math.PI / 2].filter((a) => facing(a) > 0.25).map((a) => k.pathOf(win(a).map(at), true)).join("");
   push(S(collar, "m-alu", { inner: `<path class="window" d="${windows}"/>` + L(windows, { tone: "mid" }) }));
   push(`<path class="window" d="${k.pathOf(Array.from({ length: 40 }, (_, i) => at(G.pointOf(CF, T.x0, 6.5, (i / 40) * Math.PI * 2))), true)}"/>` + L(G.circleOf(CF, T.x0, 6.5, P, 40), { tone: "lo" }) + L(G.circleOf(CF, T.x0, 12, P, 48), { tone: "faint" }));
-  // the sleeve (moves with the shutter) is drawn by the page into this slot
-  push(`<g data-dyn="sleeve-o">${sleeveO({ iso: k.iso, pathOf: k.pathOf, solidSvg: k.solidSvg, lineSvg: k.lineSvg, dotsSvg: k.dotsSvg }, G, P, 1)}</g>`);
+  // the shutter sleeve, set fully open
+  push(`<g data-part="sleeve-o">${sleeveO({ iso: k.iso, pathOf: k.pathOf, solidSvg: k.solidSvg, lineSvg: k.lineSvg, dotsSvg: k.dotsSvg }, G, P)}</g>`);
   // orifice hood: hex nut body, cone tip
   const hex = Array.from({ length: 6 }, (_, i) => [D.HOOD.r * Math.cos((i * Math.PI) / 3 + Math.PI / 6), D.HOOD.r * Math.sin((i * Math.PI) / 3 + Math.PI / 6)]);
   push(S(G.solidOf([[D.HOOD.tip, D.HOOD.tipR[1]], [D.HOOD.x1, D.HOOD.tipR[0]]], AXF(), P), "m-brass"));
@@ -219,7 +219,7 @@ export function buildOrtho(W, H) {
   });
   const frontSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="iso-svg gb-front" viewBox="0 0 ${W} ${H}" aria-hidden="true">${front.join("")}</svg>`;
   const DATA = { P, eTip, crownAt: D.polar(E.angle, D.HEAD.rCrown, E.tipZ) };
-  return { P, back: backSvg, front: frontSvg, DATA, dynamic: [knobO, sleeveO] };
+  return { P, back: backSvg, front: frontSvg, DATA, dynamic: [knobO] };
 }
 
 // the knob in the ortho view: body, knurls, and the grip fin turned by theta (deg), pushed in by `push` mm
@@ -240,10 +240,10 @@ export function knobO(k, G, P, theta, push) {
   return out;
 }
 
-// the shutter sleeve on the collar, at an opening between 0 (closed) and 1
-export function sleeveO(k, G, P, shutter) {
+// the shutter sleeve on the collar, fully open as the burner ships
+export function sleeveO(k, G, P) {
   const ZT = 90, len = 14, rOut = 18.4;
-  const x0 = -135 + 13 * shutter;
+  const x0 = -122;
   const F = G.frameOf([0, 0, ZT], [1, 0, 0], [0, 1, 0], [0, 0, 1]);
   let out = k.solidSvg(G.disc(x0, x0 + len, rOut, F, P, { steps: 64 }), { tone: "hi", className: "m-zinc", inner: k.lineSvg(G.arcOf(F, x0 + 2, rOut, P) + G.arcOf(F, x0 + len - 2, rOut, P), { tone: "faint" }) });
   // lock screw on top

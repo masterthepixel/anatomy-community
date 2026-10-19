@@ -19,7 +19,6 @@ export const HOOD = { x0: -150, x1: -143, r: 6, tip: -138.4, tipR: [4, 2.2], ori
 // burner tube: collar (air shutter seat) then bell, throat, diffuser and a straight run into the head plenum
 export const TUBE = { x0: -140, plate: -138.5, collarEnd: -104, window: [-135, -122], end: 48.2, wall: 1.6, collarR: 16.6 };
 export const SLEEVE = { len: 14, rIn: 16.8, rOut: 18.4 };
-export const sleeveAt = (shutter) => TUBE.window[0] + (TUBE.window[1] - TUBE.window[0]) * shutter; // sleeve's −x end
 const lerp = (a, b, t) => a + (b - a) * t;
 const ease = (t) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, t)));
 // inner radius of the tube along x (the gas path), and its derivative

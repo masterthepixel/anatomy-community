@@ -3,12 +3,13 @@
 //
 // What is exact and what is approximate:
 // - Orifice flow (Bernoulli with a discharge coefficient) and the valve and orifice in series: textbook.
-// - Primary air entrainment: Prigg's momentum relation for an atmospheric injector, (1 + r)(1 + r·s) = Λ·At/Ao,
-//   with one lumped loss factor Λ fitted so a wide-open shutter gives about 54 % primary aeration, which is
-//   typical of a domestic burner. The shutter adds a loss that grows as its opening closes. Approximate.
+// - Primary air entrainment: the momentum balance for an atmospheric injector. Jet momentum at the orifice
+//   equals mixture momentum at the throat, which gives (1 + r)(1 + r/s) = Λ·At/Ao, with r the air-to-gas volume
+//   ratio and s the gas's specific gravity. One lumped loss factor Λ is fitted so the burner, with its air
+//   shutter fully open as it ships, gives about 54 % primary aeration, typical of a domestic burner. Approximate.
 // - Inner-cone height from the cone-angle relation h = (w/2)·sqrt((u/S)² − 1) with a fitted burning velocity
 //   S(aeration) for the rich primary mixture. Approximate, good for trends.
-// - Outer flame length and yellow tipping: fitted trends, for the picture only.
+// - Outer flame length: a fitted trend, for the picture only.
 
 export const GAS = {
   name: "natural gas",
@@ -26,8 +27,7 @@ export const BURNER = {
   ports: 28, // slots round the head
   portW: 1.6e-3, // m, slot width (sets the inner cone)
   portH: 4.0e-3, // m, slot height
-  lambda: 0.21, // lumped injector loss factor (fitted)
-  shutterLoss: 0.15, // how fast the shutter throttles air as it closes (fitted)
+  lambda: 0.492, // lumped injector loss factor (fitted to 54 % primary aeration)
   volume: 110e-6, // m³ of mixing tube and head between the orifice and the ports
   crossfire: 0.45, // m/s, how fast flame runs from port to port round the ring
   ringR: 0.034, // m, port ring radius
@@ -57,9 +57,9 @@ export function flowFraction(theta) {
 export const switchClosed = (theta) => theta >= SWITCH[0] && theta <= SWITCH[1];
 export const pushNeeded = (theta) => theta < 12; // the knob must be pushed in to leave OFF
 
-// ---------- the steady state for one knob angle and shutter opening ----------
+// ---------- the steady state for one knob angle ----------
 const area = (d) => (Math.PI * d * d) / 4;
-export function steady(theta, shutter = 1, B = BURNER, g = GAS) {
+export function steady(theta, B = BURNER, g = GAS) {
   const Ao = area(B.orificeD);
   const At = area(B.throatD);
   const f = flowFraction(theta);
@@ -69,11 +69,10 @@ export function steady(theta, shutter = 1, B = BURNER, g = GAS) {
   const pOrifice = B.supply * f * f;
   const jet = Math.sqrt((2 * pOrifice) / g.rho); // m/s at the orifice
   const qGas = B.cd * Ao * jet; // m³/s
-  // primary air: Prigg, with the shutter adding a loss as it closes
-  const s = Math.max(0.02, Math.min(1, shutter));
-  const lam = (B.lambda * (1 + B.shutterLoss)) / (1 + B.shutterLoss / (s * s));
-  const ratio = lam * (At / Ao); // (1 + r)(1 + r·sg) = ratio
-  const r = ratio > 1 ? (-(1 + g.sg) + Math.sqrt((1 + g.sg) ** 2 - 4 * g.sg * (1 - ratio))) / (2 * g.sg) : 0;
+  // primary air: (1 + r)(1 + r/sg) = Λ·At/Ao, a quadratic in r: r²/sg + r(1 + 1/sg) + 1 − ratio = 0
+  const ratio = B.lambda * (At / Ao);
+  const a = 1 / g.sg, b = 1 + 1 / g.sg, c = 1 - ratio;
+  const r = ratio > 1 ? (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a) : 0;
   const aeration = r / g.stoich; // primary aeration, share of stoichiometric air
   const qMix = qGas * (1 + r);
   const portArea = B.ports * B.portW * B.portH;
@@ -83,13 +82,11 @@ export function steady(theta, shutter = 1, B = BURNER, g = GAS) {
   const cone = ratioUS > 1 ? (B.portW / 2) * Math.sqrt(ratioUS * ratioUS - 1) : 0; // inner cone height, m
   const perPort = qGas / B.ports;
   const outer = cone + 8.7e6 * perPort * (1 - Math.min(1, aeration)) * 1e-3 + (f > 0 ? 0.002 : 0); // m
-  const yellow = smoothstep(0.42, 0.22, aeration) * (f > 0 ? 1 : 0);
   const power = qGas * g.hhv; // W (higher heating value)
   const transport = qMix > 0 ? B.volume / qMix : Infinity; // s from orifice to ports
   return {
-    theta, f, shutter: s, valveArea, pOrifice, inwc: toInWC(pOrifice), jet, qGas, r, aeration, qMix, u, S,
-    cone, outer, yellow, power, btu: power * 3.412, transport,
-    flashback: f > 0 && ratioUS > 0 && ratioUS < 1.05, lift: ratioUS > 18,
+    theta, f, valveArea, pOrifice, inwc: toInWC(pOrifice), jet, qGas, r, aeration, qMix, u, S,
+    cone, outer, power, btu: power * 3.412, transport,
   };
 }
 
@@ -98,9 +95,9 @@ export function initial() {
   return { fill: 0, lit: false, spread: 0, sparkClock: 0, sparkAt: -9, sparks: 0, litAt: -9, outAt: -9, clock: 0, flow: 0 };
 }
 
-// advance by dt seconds with the knob at theta and the shutter at `shutter`. Returns the steady values too.
-export function step(state, theta, shutter, dt, B = BURNER) {
-  const st = steady(theta, shutter, B);
+// advance by dt seconds with the knob at theta. Returns the steady values too.
+export function step(state, theta, dt, B = BURNER) {
+  const st = steady(theta, B);
   state.clock += dt;
   // mixture flow follows the valve with the transport lag of the tube (plug flow approximated as first order)
   state.flow += (st.f - state.flow) * (1 - Math.exp(-dt / 0.08));

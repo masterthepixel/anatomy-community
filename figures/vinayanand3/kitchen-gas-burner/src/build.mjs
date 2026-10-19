@@ -19,7 +19,7 @@ const secBack = k.figureSvg({
   label: "Section through a gas range burner on a test base: the knob and its stem, the spark switch, the brass plug valve hung from the manifold, the orifice hood firing into the air shutter and the venturi mixing tube, and the burner head with its ports, cap and spark electrode under a cooktop and drip bowl.",
   body: `${SEC.defs}<g class="far">${SEC.back}</g><g class="cavities">${SEC.cavitySvg}</g><g class="fallback" data-fallback="sec">${SEC.fallback}</g>`,
 });
-const secFront = `<svg xmlns="http://www.w3.org/2000/svg" class="iso-svg gb-front" viewBox="0 0 ${W} ${H}" aria-hidden="true">${SEC.defs.replace(/id="h-/g, 'id="f-h-').replace(/<defs>[\s\S]*<\/defs>/, "")}<g class="cuts">${SEC.cutsSvg}<g data-dyn="plug">${plugSvg(k, SEC.P, 1)}</g>${SEC.edgesSvg}<g data-dyn="sleeve">${sleeveSvg(k, SEC.P, 1)}</g></g><g data-dyn="knob">${SEC.knob}</g><g class="labels">${SEC.labels}</g></svg>`;
+const secFront = `<svg xmlns="http://www.w3.org/2000/svg" class="iso-svg gb-front" viewBox="0 0 ${W} ${H}" aria-hidden="true">${SEC.defs.replace(/id="h-/g, 'id="f-h-').replace(/<defs>[\s\S]*<\/defs>/, "")}<g class="cuts">${SEC.cutsSvg}<g data-dyn="plug">${plugSvg(k, SEC.P, 1)}</g>${SEC.edgesSvg}<g data-part="sleeve">${sleeveSvg(k, SEC.P)}</g></g><g data-dyn="knob">${SEC.knob}</g><g class="labels">${SEC.labels}</g></svg>`;
 
 // ---------- ortho view ----------
 const ORT = buildOrtho(W, H);
@@ -87,7 +87,7 @@ const DATA = {
 const strip = (f) => readFileSync(join(HERE, f), "utf8").replace(/^import .*$/gm, "").replace(/^export /gm, "");
 const latheSource = readFileSync(fileURLToPath(new URL("../../../../.skill/kit/lathe.mjs", import.meta.url)), "utf8").replace(/^import .*$/gm, "").replace(/^export /gm, "");
 const latheScript = `const G = (() => {${latheSource}\nreturn { viewOf, lightOf, scaleOf, frameAlong, frameOf, pointOf, disc, sphereOf, prismOf, circleOf, arcOf, ribsOf, dotsOf, lathe, solidOf, hullOf, toneOf, bandOf, dot3, add3, sub3, mul3, unit3, cross3, len3 };})();\n`;
-const dyn = [knobSvg, sleeveSvg, plugSvg, ...ORT.dynamic].map((fn) => fn.toString()).join("\n");
+const dyn = [knobSvg, plugSvg, ...ORT.dynamic].map((fn) => fn.toString()).join("\n");
 const CSS = readFileSync(join(HERE, "style.css"), "utf8");
 const LIVE = readFileSync(join(HERE, "live.js"), "utf8").replace("__DATA__", JSON.stringify(DATA));
 const script = kitScript() + glScript() + latheScript + strip("model.mjs") + dyn + "\n" + LIVE;

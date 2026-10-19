@@ -10,30 +10,26 @@ const views = { section: $('.gb-view[data-view="section"]'), ortho: $('.gb-view[
 const sim = initial();
 const knob = { x: 0, v: 0 }; // knob angle, eased (deg)
 const push = { x: 0, v: 0 }; // knob pushed in (mm)
-let target = 0, shutter = 1, shutterShown = 1, view = "section";
+let target = 0, view = "section";
 let clock = 0, last = 0, frame = 0, visible = false, touring = !still.matches, tourClock = 0, holdUntil = 0;
 const STAGES = { OFF: 0, LITE: D.detents.LITE, HI: D.detents.HI, MED: D.detents.MED, LO: D.detents.LO };
 
 // ---------- dynamic pieces ----------
 const dyn = (v, name) => views[v].querySelector(`[data-dyn="${name}"]`);
-let drawn = { knob: null, push: null, plug: null, sleeve: null };
-function drawSection(theta, pushed, f, sh) {
+let drawn = { knob: null, push: null, plug: null };
+function drawSection(theta, pushed, f) {
   const P = D.sec.P;
   const kq = Math.round(theta * 2) / 2, pq = Math.round(pushed * 10) / 10;
   if (drawn.knob !== kq || drawn.push !== pq) { dyn("section", "knob").innerHTML = knobSvg({ iso, pathOf, solidSvg, fadedSvg }, G, P, kq, pq); drawn.knob = kq; drawn.push = pq; }
   const fq = Math.round(f * 50) / 50;
   if (drawn.plug !== fq) { dyn("section", "plug").innerHTML = plugSvg({ iso, pathOf }, P, fq); drawn.plug = fq; }
-  const sq = Math.round(sh * 200) / 200;
-  if (drawn.sleeve !== sq) { dyn("section", "sleeve").innerHTML = sleeveSvg({ iso, pathOf }, P, sq); drawn.sleeve = sq; }
 }
 const KIT = { iso, pathOf, solidSvg, fadedSvg, lineSvg, dotsSvg };
-let drawnO = { knob: null, push: null, sleeve: null };
-function drawOrtho(theta, pushed, sh) {
+let drawnO = { knob: null, push: null };
+function drawOrtho(theta, pushed) {
   const P = D.ort.P;
   const kq = Math.round(theta * 2) / 2, pq = Math.round(pushed * 10) / 10;
   if (drawnO.knob !== kq || drawnO.push !== pq) { dyn("ortho", "knob-o").innerHTML = knobO(KIT, G, P, kq, pq); drawnO.knob = kq; drawnO.push = pq; }
-  const sq = Math.round(sh * 200) / 200;
-  if (drawnO.sleeve !== sq) { dyn("ortho", "sleeve-o").innerHTML = sleeveO(KIT, G, P, sq); drawnO.sleeve = sq; }
 }
 
 // ---------- tour: push, turn to LITE, catch, HI, MED, LO, back up, off ----------
@@ -99,11 +95,10 @@ function tick(now) {
   settle(push, wantPush, dt, 0.08, calm);
   const canTurn = push.x > 2.4 || knob.x > 8;
   settle(knob, canTurn || target < knob.x ? target : knob.x, dt, 0.22, calm);
-  shutterShown += (shutter - shutterShown) * (calm ? 1 : 1 - Math.exp(-dt / 0.15));
-  const st = step(sim, knob.x, shutterShown, dt);
+  const st = step(sim, knob.x, dt);
   lastSt = st;
   root.style.setProperty("--gb-flow", Math.min(1, sim.flow).toFixed(3));
-  if (view === "section") drawSection(knob.x, push.x, st.f, shutterShown); else drawOrtho(knob.x, push.x, shutterShown);
+  if (view === "section") drawSection(knob.x, push.x, st.f); else drawOrtho(knob.x, push.x);
   say(st);
   render(st, dt, calm);
   frame = visible ? requestAnimationFrame(tick) : 0;
@@ -183,8 +178,8 @@ vec4 lightInk(vec3 hue,float e,float cap){
   float a=cap*(1.-exp(-1.6*e/cap));
   return vec4(hue*a,a);
 }
-// a port flame in a plane: base, unit direction, inner cone height, outer length (mm), yellow share, level
-vec4 flame2(vec2 p,vec2 base,vec2 dir,float hin,float L,float yel,float lit,float seed){
+// a port flame in a plane: base, unit direction, inner cone height, outer length (mm), level
+vec4 flame2(vec2 p,vec2 base,vec2 dir,float hin,float L,float lit,float seed){
   if(lit<.002||L<.3)return vec4(0.);
   vec2 q=p-base;
   vec2 nrm=vec2(-dir.y,dir.x);
@@ -200,11 +195,11 @@ vec4 flame2(vec2 p,vec2 base,vec2 dir,float hin,float L,float yel,float lit,floa
   float cone=inA*(exp(-pow((abs(b)-w)/.42,2.))*.95+smoothstep(w,w-.6,abs(b))*.25);
   float W=1.7+2.6*pow(sin(3.1416*min(1.,t*1.1)),.7)+.5*t;
   float mant=window(a,-.3,L,.6)*smoothstep(W,W-1.6,abs(b))*(1.-.7*t);
-  float tip=yel*window(a,L*.55,L*1.05,L*.2+.4)*smoothstep(W,W-1.8,abs(b))*.75;
-  return vec4(cone*lit,mant*lit,tip*lit,0.);
+  return vec4(cone*lit,mant*lit,0.,0.);
 }`;
 const FRAG_SEC = GL_COMMON + `
-uniform float uFlow,uFront,uGas,uPhase,uHeadPhase,uWin,uLit,uSpread,uCone,uOuter,uYellow,uSpark,uSeed,uShutterX;
+uniform float uFlow,uFront,uGas,uPhase,uHeadPhase,uLit,uSpread,uCone,uOuter,uSpark,uSeed;
+const float WINDOW_END=-122.; // the shutter sleeve sits fully open, as the burner ships
 const float ZT=90.,PLATE=-138.5,XEND=${D.sec.tube.xEnd.toFixed(2)},TIP=-138.4,HX=60.;
 float ease(float t){t=clamp(t,0.,1.);return .5-.5*cos(3.14159265*t);}
 float rIn(float x){if(x<-110.)return 15.;if(x<-92.)return mix(15.,8.,ease((x+110.)/18.));if(x<-82.)return 8.;if(x<-10.)return mix(8.,12.,(x+82.)/72.);return 12.;}
@@ -252,15 +247,15 @@ void main(){
     gasE+=vec3(1.,.6,.15)*jet*.9;
     airE*=gate;gasE*=gate;
   }
-  // ---- air coming in through the open part of the shutter window ----
+  // ---- air coming in through the shutter window ----
   float ad=abs(dz);
-  if(uFlow>.002&&x>-135.&&x<uShutterX&&ad>14.8&&ad<26.){
+  if(uFlow>.002&&x>-135.&&x<WINDOW_END&&ad>14.8&&ad<26.){
     float lane=floor((x+135.)/3.2);
     float lx=-135.+(lane+.5)*3.2;
     float ph=(26.-ad)/4.5-uPhase*1.6+hash12(vec2(lane,1.));
     float fr=fract(ph)-.5;
     float d=length(vec2(x-lx,fr*4.5));
-    airE+=vec3(.55,.72,1.)*dotAt(d,.6,px)*uFlow*smoothstep(26.,22.,ad)*step(lx,uShutterX-.8);
+    airE+=vec3(.55,.72,1.)*dotAt(d,.6,px)*uFlow*smoothstep(26.,22.,ad)*step(lx,WINDOW_END-.8);
   }
   // ---- mixture rising through the head to the ports ----
   float hi=headIn(z);
@@ -295,7 +290,7 @@ void main(){
     // a flame tilted 20° up from radial, projected: a port facing away shows only its rise
     vec2 dp=vec2(c*.94,.34);
     float fore=length(dp);
-    vec4 f=flame2(vec2(x,z),base,dp/fore,uCone*fore,uOuter*fore,uYellow,lit,float(i));
+    vec4 f=flame2(vec2(x,z),base,dp/fore,uCone*fore,uOuter*fore,lit,float(i));
     // far flames hide behind the head and its cap
     float hidden=0.;
     if(s<-.02){float hw=z<140.?headOut(z):capR(z);hidden=step(abs(x-HX),hw)*step(z,146.5);}
@@ -318,10 +313,10 @@ void main(){
     sp=(vec3(.85,.85,1.)*core*1.6+vec3(.55,.45,1.)*halo)*uSpark;
   }
   // ---- compose: dark adds light, light lays one ink per kind ----
-  vec3 cone=vec3(.25,.6,1.)*fl.x*1.5,mant=vec3(.32,.36,1.)*fl.y*.55,tip=vec3(1.,.66,.16)*fl.z*1.1;
+  vec3 cone=vec3(.25,.6,1.)*fl.x*1.5,mant=vec3(.32,.36,1.)*fl.y*.55;
   vec4 col;
   if(uLight<.5){
-    vec3 e=airE*.9+gasE+cone+mant+tip+sp;
+    vec3 e=airE*.9+gasE+cone+mant+sp;
     vec3 c=tonemap(e,1.1);
     col=vec4(c,max(c.r,max(c.g,c.b)));
   }else{
@@ -331,8 +326,7 @@ void main(){
     vec3 seen=mix(vec3(1.),vec3(.1,.38,.98),clamp(fl.y*.55,0.,.6));
     seen=mix(seen,vec3(.05,.42,1.),clamp(fl.x*.9,0.,.95));
     seen=mix(seen,vec3(.86,.93,1.),clamp(fl.x*fl.x*.35,0.,.35));
-    seen=mix(seen,vec3(1.,.62,.08),clamp(fl.z*.85,0.,.9));
-    vec4 flame=inkFor(seen,0.)*smoothstep(0.,.08,ef+fl.z);
+    vec4 flame=inkFor(seen,0.)*smoothstep(0.,.08,ef);
     vec3 sseen=mix(vec3(1.),vec3(.42,.3,1.),clamp(length(sp)*.6,0.,.9));
     sseen=mix(sseen,vec3(.97,.96,1.),clamp(length(sp)*.6-.6,0.,.6));
     vec4 spark=inkFor(sseen,clamp(length(sp),0.,1.)*.5);
@@ -343,7 +337,7 @@ void main(){
 
 
 const FRAG_ORT = GL_COMMON + `
-uniform float uLit,uSpread,uCone,uOuter,uYellow,uSpark,uSeed;
+uniform float uLit,uSpread,uCone,uOuter,uSpark,uSeed;
 uniform vec3 uTip,uCrown;
 const vec2 HC=vec2(60.,0.);
 const float PZ=136.5,RC=34.,DELTA=6.2831853/28.,EANG=3.2114;
@@ -375,8 +369,7 @@ vec3 flameAt(vec3 q){
   float sw=pow(sin(3.1416*min(1.,t*1.1)),.7);
   float e2=length(vec2(n/(1.8+2.2*sw+.4*t),tg/(1.+1.7*sw)));
   float mant=window(a,-.3,L,.6)*smoothstep(1.,.55,e2)*(1.-.7*t);
-  float tip=uYellow*window(a,L*.55,L*1.05,L*.2+.4)*smoothstep(1.,.5,e2)*.75;
-  return vec3(cone,mant,tip)*lit;
+  return vec3(cone,mant,0.)*lit;
 }
 void main(){
   vec2 vb=viewOf(gl_FragCoord.xy);
@@ -413,7 +406,7 @@ void main(){
       vec3 q=B3+d3*min(am,uOuter);
       float behind=dot(q-p0,V)<max(occ,dot(vec3(HC,PZ+4.)-p0,V))?1.:0.;
       float hidden=behind*cov;
-      vec4 f=flame2(pm,base,dir,uCone*fore,uOuter*fore,uYellow,lit,float(i));
+      vec4 f=flame2(pm,base,dir,uCone*fore,uOuter*fore,lit,float(i));
       fl+=f.xyz*(1.-hidden);
     }
   }
@@ -432,17 +425,16 @@ void main(){
     sp=(vec3(.85,.85,1.)*core*1.6+vec3(.55,.45,1.)*halo)*uSpark;
   }
   vec4 col;
-  vec3 cone=vec3(.25,.6,1.)*fl.x*1.5,mant=vec3(.32,.36,1.)*fl.y*.55,tip=vec3(1.,.66,.16)*fl.z*1.1;
+  vec3 cone=vec3(.25,.6,1.)*fl.x*1.5,mant=vec3(.32,.36,1.)*fl.y*.55;
   if(uLight<.5){
-    vec3 c=tonemap(cone+mant+tip+sp,1.1);
+    vec3 c=tonemap(cone+mant+sp,1.1);
     col=vec4(c,max(c.r,max(c.g,c.b)));
   }else{
     float ef=fl.x*1.2+fl.y*.5;
     vec3 seen=mix(vec3(1.),vec3(.1,.38,.98),clamp(fl.y*.55,0.,.6));
     seen=mix(seen,vec3(.05,.42,1.),clamp(fl.x*.9,0.,.95));
     seen=mix(seen,vec3(.86,.93,1.),clamp(fl.x*fl.x*.35,0.,.35));
-    seen=mix(seen,vec3(1.,.62,.08),clamp(fl.z*.85,0.,.9));
-    vec4 flame=inkFor(seen,0.)*smoothstep(0.,.08,ef+fl.z);
+    vec4 flame=inkFor(seen,0.)*smoothstep(0.,.08,ef);
     vec3 sseen=mix(vec3(1.),vec3(.42,.3,1.),clamp(length(sp)*.6,0.,.9));
     sseen=mix(sseen,vec3(.97,.96,1.),clamp(length(sp)*.6-.6,0.,.6));
     col=over(inkFor(sseen,clamp(length(sp),0.,1.)*.5),flame);
@@ -451,11 +443,11 @@ void main(){
 }`;
 
 // ---------- WebGL layers and the render step ----------
-const SEC_U = ["uFlow", "uFront", "uGas", "uPhase", "uHeadPhase", "uWin", "uLit", "uSpread", "uCone", "uOuter", "uYellow", "uSpark", "uSeed", "uShutterX"];
+const SEC_U = ["uFlow", "uFront", "uGas", "uPhase", "uHeadPhase", "uLit", "uSpread", "uCone", "uOuter", "uSpark", "uSeed"];
 const secLayer = glLayer({ canvas: views.section.querySelector(".gb-gl"), fragment: FRAG_SEC, view: [D.W, D.H], camera: D.sec.camera, uniforms: SEC_U, fixed: { uLight: LIGHT } });
 if (secLayer) stage.setAttribute("data-gl", "");
-const ortLayer = glLayer({ canvas: views.ortho.querySelector(".gb-gl"), fragment: FRAG_ORT, view: [D.W, D.H], camera: D.ort.camera, uniforms: ["uLit", "uSpread", "uCone", "uOuter", "uYellow", "uSpark", "uSeed"], fixed: { uLight: LIGHT, uTip: D.ort.eTip, uCrown: D.ort.crownAt } });
-const fx = { lit: { x: 0, v: 0 }, cone: { x: 0, v: 0 }, outer: { x: 0, v: 0 }, yellow: { x: 0, v: 0 }, phase: 0, headPhase: 0, sparkAt: -9, seed: 0 };
+const ortLayer = glLayer({ canvas: views.ortho.querySelector(".gb-gl"), fragment: FRAG_ORT, view: [D.W, D.H], camera: D.ort.camera, uniforms: ["uLit", "uSpread", "uCone", "uOuter", "uSpark", "uSeed"], fixed: { uLight: LIGHT, uTip: D.ort.eTip, uCrown: D.ort.crownAt } });
+const fx = { lit: { x: 0, v: 0 }, cone: { x: 0, v: 0 }, outer: { x: 0, v: 0 }, phase: 0, headPhase: 0, sparkAt: -9, seed: 0 };
 render = (st, dt, calm) => {
   const flow = Math.min(1, sim.flow);
   fx.phase += dt * 2.2 * flow * (calm ? 0 : 1);
@@ -464,13 +456,12 @@ render = (st, dt, calm) => {
   settle(fx.lit, sim.lit ? 1 : 0, dt, sim.lit ? 0.06 : 0.12, calm);
   settle(fx.cone, st.cone * 1000 * (sim.lit ? 1 : 0.6), dt, 0.18, calm);
   settle(fx.outer, st.outer * 1000, dt, 0.18, calm);
-  settle(fx.yellow, st.yellow, dt, 0.3, calm);
   const spark = calm ? 0 : burst(clock - fx.sparkAt, 0.012, 0.075);
-  const u = { uFlow: flow, uFront: sim.fill, uGas: 1 / (1 + st.r), uPhase: fx.phase, uHeadPhase: fx.headPhase, uWin: 0, uLit: fx.lit.x, uSpread: sim.spread, uCone: fx.cone.x, uOuter: fx.outer.x, uYellow: fx.yellow.x, uSpark: spark, uSeed: fx.seed, uShutterX: -135 + 13 * shutterShown };
+  const u = { uFlow: flow, uFront: sim.fill, uGas: 1 / (1 + st.r), uPhase: fx.phase, uHeadPhase: fx.headPhase, uLit: fx.lit.x, uSpread: sim.spread, uCone: fx.cone.x, uOuter: fx.outer.x, uSpark: spark, uSeed: fx.seed };
   root.style.setProperty("--gb-lit", fx.lit.x.toFixed(3));
   root.style.setProperty("--gb-spark", Math.min(1, spark * 1.5).toFixed(3));
   if (view === "section" && secLayer) secLayer.draw(u, calm ? 0.8 : clock);
-  if (view === "ortho" && ortLayer) ortLayer.draw({ uLit: u.uLit, uSpread: u.uSpread, uCone: u.uCone, uOuter: u.uOuter, uYellow: u.uYellow, uSpark: u.uSpark, uSeed: u.uSeed }, calm ? 0.8 : clock);
+  if (view === "ortho" && ortLayer) ortLayer.draw({ uLit: u.uLit, uSpread: u.uSpread, uCone: u.uCone, uOuter: u.uOuter, uSpark: u.uSpark, uSeed: u.uSeed }, calm ? 0.8 : clock);
 };
 window.__gb = { sim, knob, push, fx, get target() { return target; }, get touring() { return touring; }, get frame() { return frame; }, get visible() { return visible; }, setTarget: (t) => { takeOver(); target = t; run(); } };
 

@@ -81,16 +81,9 @@
 .gb-toggle button[aria-pressed="true"]{background:var(--anatomy-faint);color:var(--anatomy-strong)}
 .gb-toggle button:focus-visible{outline:1px solid var(--anatomy-muted)}
 
-/* ---------- footer: hint, readout, stage tabs, shutter ---------- */
+/* ---------- footer: hint and readout ---------- */
 .gb-foot{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-size:12.5px;color:var(--anatomy-muted)}
 .gb-readout{color:var(--anatomy-strong);font-family:var(--anatomy-mono);font-size:11.5px;letter-spacing:.04em;font-variant-numeric:tabular-nums;white-space:nowrap}
-.gb-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}
-.gb-tabs button{all:unset;cursor:pointer;text-align:center;padding:10px 0 4px;border-top:2px solid var(--anatomy-faint);font-family:var(--anatomy-mono);font-size:10.5px;letter-spacing:.14em;color:var(--anatomy-muted)}
-.gb-tabs button[aria-selected="true"]{border-top-color:#e2533b;color:var(--anatomy-strong)}
-.gb-tabs button:focus-visible{outline:1px solid var(--anatomy-muted)}
-.gb-shutter{display:flex;align-items:center;gap:12px;margin-top:10px;font-family:var(--anatomy-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--anatomy-muted)}
-.gb-shutter input{flex:1;accent-color:#e2533b}
-.gb-shutter output{min-width:42px;text-align:right;color:var(--anatomy-strong);font-variant-numeric:tabular-nums}
 .gb-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (max-width:560px){
   .gb .iso-plate{padding:14px 12px 14px}
@@ -104,8 +97,7 @@
   .gb-hint{display:none}
   .gb-foot{justify-content:flex-end}
   .gb-readout{font-size:10.5px;white-space:normal;text-align:right}
-  .gb-tabs{gap:4px}
-}
+  }
 
 /* ---------- the knob control and what's happening ---------- */
 .gb{--gb-accent:#e2533b;--gb-flame:#2f6bff;--gb-spark-c:#6a54ff}

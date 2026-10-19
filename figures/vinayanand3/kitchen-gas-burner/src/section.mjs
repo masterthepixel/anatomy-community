@@ -214,7 +214,6 @@ export function buildSection(W, H) {
     ports: [at(hx - H_.rCrown, D.PORTS.zMid), at(hx + H_.rCrown, D.PORTS.zMid)],
     eTip: at(eTip[0], eTip[2]),
     crownAt: at(hx - H_.rCrown, D.PORTS.zMid),
-    sleeve0: D.sleeveAt(1),
     origin: at(0, 0),
   };
   return { P, defs, fallback, back: back.join(""), cavitySvg, cutsSvg, edgesSvg, knob, labels, DATA, at };
@@ -237,10 +236,10 @@ export function knobSvg(k, G, P, theta, push) {
   return out;
 }
 
-// the shutter sleeve at a given opening, as cut faces (moves along x)
-export function sleeveSvg(k, P, shutter) {
+// the shutter sleeve, fully open as the burner ships, as cut faces
+export function sleeveSvg(k, P) {
   const ZT = 90, S = { len: 14, rIn: 16.8, rOut: 18.4 };
-  const x0 = -135 + 13 * shutter;
+  const x0 = -122;
   const at = (x, z) => k.iso([x, 0, z], P);
   const rc = (a, b, c, d) => k.pathOf([at(a, b), at(c, b), at(c, d), at(a, d)], true);
   const d = rc(x0, ZT + S.rIn, x0 + S.len, ZT + S.rOut) + rc(x0, ZT - S.rOut, x0 + S.len, ZT - S.rIn) + rc(x0 + 5, ZT + S.rOut, x0 + 8, ZT + S.rOut + 4);
